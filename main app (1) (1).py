@@ -147,4 +147,3 @@ if st.session_state.screened_tickers:
         st.error(f"❌ DataFrame rendering failed: {e}")
 else:
     st.info("Please run the daily screen to populate tickers.")
-
