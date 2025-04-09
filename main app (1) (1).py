@@ -1,5 +1,5 @@
 
-import streamlit as st
+""import streamlit as st
 import pandas as pd
 import numpy as np
 import yfinance as yf
@@ -13,7 +13,7 @@ DEBUG = True
 
 # Set Streamlit page config
 st.set_page_config(layout="wide")
-st.title("📉 Intraday Breakout Prediction Dashboard")
+st.title("\ud83d\udcc9 Intraday Breakout Prediction Dashboard")
 
 # Load the LightGBM model
 try:
@@ -22,24 +22,18 @@ except Exception as e:
     st.error(f"Failed to load LightGBM model: {e}")
     st.stop()
 
-# Daily screening conditions with column flattening
-
+# Daily screening conditions with detailed logging
 def passes_screening(ticker):
     try:
         hist = yf.download(ticker, period="1y", interval="1d", progress=False)
-
-        # Flatten MultiIndex columns if present
-        if isinstance(hist.columns, pd.MultiIndex):
-            hist.columns = hist.columns.get_level_values(0)
-
         if DEBUG:
             st.text(f"{ticker} historical data tail:\n{hist.tail()}\n")
 
-        if hist.empty or "Close" not in hist.columns or "Volume" not in hist.columns or "High" not in hist.columns:
+        if hist.empty or any(col not in hist.columns for col in ["Close", "Volume", "High"]):
             st.info(f"{ticker}: Missing required historical columns.")
             return False
 
-        avg_volume = hist["Volume"].tail(30).mean()
+        avg_volume = float(hist["Volume"].tail(30).mean())
         if DEBUG:
             st.text(f"{ticker} avg_volume: {avg_volume}")
 
@@ -47,25 +41,24 @@ def passes_screening(ticker):
             st.info(f"{ticker}: Avg volume too low or NaN.")
             return False
 
-        high_52w = float(hist["High"].rolling(window=252).max().iloc[-1])
-        current_price = float(hist["Close"].iloc[-1])
+        high_52w = hist["High"].rolling(window=252).max().iloc[-1]
+        current_price = hist["Close"].iloc[-1]
 
         if pd.isna(high_52w) or pd.isna(current_price):
             st.info(f"{ticker}: Missing current price or 52w high.")
             return False
 
         if DEBUG:
-            st.text(f"{ticker} current_price={current_price}, high_52w={high_52w}")
+            st.text(f"{ticker} current_price={current_price}, high_52w={high_52w}, 60% of high={0.6 * high_52w}")
 
-        if current_price < 0.6 * high_52w:
+        if (current_price < (0.6 * high_52w)).item():
             st.info(f"{ticker}: Price {current_price} < 60% of 52w high {high_52w}")
             return False
 
         return True
-
     except Exception as e:
         error_details = traceback.format_exc()
-        st.warning(f"⚠️ Error with {ticker}:\n{error_details}")
+        st.warning(f"\u26a0\ufe0f Error with {ticker}:\n{error_details}")
         return False
 
 @st.cache_data(show_spinner=False)
@@ -77,7 +70,9 @@ def get_sp500_tickers():
 def get_screened_tickers():
     tickers = get_sp500_tickers()
     screened = []
-    for ticker in tickers:
+    for i, ticker in enumerate(tickers):
+        if i < 5:
+            st.subheader(f"\ud83d\udd0d Debug for {ticker}")
         if passes_screening(ticker):
             screened.append(ticker)
     return screened
@@ -100,7 +95,7 @@ def get_live_features(ticker):
 if "screened_tickers" not in st.session_state:
     st.session_state.screened_tickers = []
 
-if st.button("🦁 Refresh Daily Screen"):
+if st.button("\ud83e\udd81 Refresh Daily Screen"):
     with st.spinner("Running daily screener..."):
         st.session_state.screened_tickers = get_screened_tickers()
         st.success(f"Screened {len(st.session_state.screened_tickers)} tickers.")
@@ -118,19 +113,22 @@ if st.session_state.screened_tickers:
             if X.empty:
                 raise ValueError("No intraday data available")
 
-            pred = model.predict(X)
-            prob = pred[0] if hasattr(pred, '__getitem__') else float(pred)
+            try:
+                pred = model.predict(X)
+                prob = pred[0] if hasattr(pred, '__getitem__') else float(pred)
+            except Exception as e:
+                raise Exception(f"Model prediction error: {e}")
 
             results.append({
                 "Ticker": ticker,
-                "Buy Signal": "✅ Buy" if prob >= threshold else "❌ No",
+                "Buy Signal": "\u2705 Buy" if prob >= threshold else "\u274c No",
                 "Probability": "N/A"
             })
         except Exception as e:
             error_details = traceback.format_exc()
             results.append({
                 "Ticker": ticker,
-                "Buy Signal": "⚠️ Error",
+                "Buy Signal": "\u26a0\ufe0f Error",
                 "Probability": str(error_details)
             })
 
@@ -142,8 +140,11 @@ if st.session_state.screened_tickers:
 
     try:
         df_results = pd.DataFrame(results)
+        st.text(df_results.dtypes)
+        st.text(df_results.head().to_string())
         st.dataframe(df_results)
     except Exception as e:
-        st.error(f"❌ DataFrame rendering failed: {e}")
+        st.error(f"\u274c DataFrame rendering failed: {e}")
 else:
     st.info("Please run the daily screen to populate tickers.")
+
