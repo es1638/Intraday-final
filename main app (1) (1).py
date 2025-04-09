@@ -13,7 +13,7 @@ DEBUG = True
 
 # Set Streamlit page config
 st.set_page_config(layout="wide")
-st.title("\ud83d\udcc9 Intraday Breakout Prediction Dashboard")
+st.title("Intraday Breakout Prediction Dashboard")
 
 # Load the LightGBM model
 try:
