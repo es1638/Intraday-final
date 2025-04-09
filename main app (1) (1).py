@@ -37,7 +37,7 @@ def passes_screening(ticker):
         if DEBUG:
             st.text(f"{ticker} avg_volume: {avg_volume}")
 
-        if pd.isna(avg_volume) or avg_volume < 10_000_000:
+        if pd.isna(avg_volume) or avg_volume.item() < 10_000_000:
             st.info(f"{ticker}: Avg volume too low or NaN.")
             return False
 
@@ -51,14 +51,14 @@ def passes_screening(ticker):
         if DEBUG:
             st.text(f"{ticker} current_price={current_price}, high_52w={high_52w}, 60% of high={0.6 * high_52w}")
 
-        if (current_price < (0.6 * high_52w)).item():
+        if (current_price < (0.6 * high_52w)):
             st.info(f"{ticker}: Price {current_price} < 60% of 52w high {high_52w}")
             return False
 
         return True
     except Exception as e:
         error_details = traceback.format_exc()
-        st.warning(f"\u26a0\ufe0f Error with {ticker}:\n{error_details}")
+        st.warning(f"⚠️ Error with {ticker}:\n{error_details}")
         return False
 
 @st.cache_data(show_spinner=False)
@@ -72,7 +72,7 @@ def get_screened_tickers():
     screened = []
     for i, ticker in enumerate(tickers):
         if i < 5:
-            st.subheader(f"\ud83d\udd0d Debug for {ticker}")
+            st.subheader(f"🔍 Debug for {ticker}")
         if passes_screening(ticker):
             screened.append(ticker)
     return screened
@@ -95,7 +95,7 @@ def get_live_features(ticker):
 if "screened_tickers" not in st.session_state:
     st.session_state.screened_tickers = []
 
-if st.button("\ud83e\udd81 Refresh Daily Screen"):
+if st.button("Refresh Daily Screen"):
     with st.spinner("Running daily screener..."):
         st.session_state.screened_tickers = get_screened_tickers()
         st.success(f"Screened {len(st.session_state.screened_tickers)} tickers.")
@@ -121,14 +121,14 @@ if st.session_state.screened_tickers:
 
             results.append({
                 "Ticker": ticker,
-                "Buy Signal": "\u2705 Buy" if prob >= threshold else "\u274c No",
+                "Buy Signal": "✅ Buy" if prob >= threshold else "❌ No",
                 "Probability": "N/A"
             })
         except Exception as e:
             error_details = traceback.format_exc()
             results.append({
                 "Ticker": ticker,
-                "Buy Signal": "\u26a0\ufe0f Error",
+                "Buy Signal": "⚠️ Error",
                 "Probability": str(error_details)
             })
 
@@ -144,7 +144,7 @@ if st.session_state.screened_tickers:
         st.text(df_results.head().to_string())
         st.dataframe(df_results)
     except Exception as e:
-        st.error(f"\u274c DataFrame rendering failed: {e}")
+        st.error(f"❌ DataFrame rendering failed: {e}")
 else:
     st.info("Please run the daily screen to populate tickers.")
 
