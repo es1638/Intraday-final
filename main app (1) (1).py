@@ -37,7 +37,7 @@ def passes_screening(ticker):
         if DEBUG:
             st.text(f"{ticker} avg_volume: {avg_volume}")
 
-        if pd.isna(avg_volume) or avg_volume.item() < 10_000_000:
+        if pd.isna(avg_volume) or avg_volume() < 10_000_000:
             st.info(f"{ticker}: Avg volume too low or NaN.")
             return False
 
